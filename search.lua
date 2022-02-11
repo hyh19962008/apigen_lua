@@ -72,46 +72,37 @@ end
 
 -- search for y_api function
 -- @param [string] funcname, function name
--- @return [array] {name, type}, an array describping all the parameters of the given function
+-- @return [array], an array describing all the parameters of the given function
 function Search.y_api_func(funcname)
 	assert(type(funcname) == "string", "parameter type error.")
 
 	local result
 	local index
-	local y_api
-	local pos
-	local params_str
 	local params
+	local di
+	local func
 
 	result = global(funcname)
 	index = check_result(result, funcname)
-
-	-- extract parameters string 
 	result = result[index]
 	result = split_result(result)
-	parse.datatype(result.name, string.gmatch(result.def, '[^\n]+'))
-	os.exit()
+
 	
-	pos = string.find(result.def, "int " .. funcname)
-	params_str = string.sub(y_api, pos + string.len(funcname) + 5, string.len(y_api) - 1)
-
-	-- seperate each parameter
-	params = string.split(params_str, ",")
-	for k,v in pairs(params) do
-		local varName
-		local varType
-		v = string.trim(v)
-		varName = string.match(v, "[%w_]+$")
-		varType = string.trim(string.sub(v, 1, string.len(v) - string.len(varName)))
-		params[k] = {
-			name = varName,
-			type = varType
-		}
+	-- result.def = string.gsub(result.def, "%*", "")
+	-- parse the function definition
+	di = cparser.declarationIterator(Parse.options, string.gmatch(result.def, '[^\n]+'))
+	func = di()
+	params = {}
+	for _, v in ipairs(func.type) do
+		table.insert(params, v)
 	end
-
+	
 	return params
 end
 
+-- search for a datatype, return full path of the file where it locates
+-- @param [string] varType
+-- @return [string] filename
 function Search.datatype(varType)
 	local result
 	local index
@@ -119,7 +110,8 @@ function Search.datatype(varType)
 
 	result = global(varType, "path")
 	index = check_result(result, varType)
+	result = result[index]
+	filename = result
 
-	filename = result[index]
-
+	return filename
 end

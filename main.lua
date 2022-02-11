@@ -23,26 +23,40 @@ fuction_closing = TEMPLATES_function_closing
 
 
 for _, param in pairs(params) do
+	local _
 	local varType
 	local tmpstr
-	-- print(param.type, param.name)
+	local filename
+	local members
+	local level = 0
 
-	if is_ctype(param.type) then
+	if Pair.is_ctype(param) then
 		output_definition = output_definition .. Generator.ctype_def(param)
-		output_expression = output_expression .. Generator.ctype_expr(param, "true")
+		output_expression = output_expression .. Generator.ctype_expr(param, level, "true")
 	else
 		-- some works need to be done before search for the symbol
-		match = string.match(param.type, "^struct")
-		if not match then 
-			match = string.match(param.type, "^union") 
-		end
+		_, match = Pair.is_ctype(param)
 		if match then
-			varType = string.trim(string.gsub(param.type, match, ""))	-- remove struct/union
-			-- print(varType, match)
+			varType = string.trim(string.gsub(Pair.get_type(param), match, ""))	-- remove struct/union
 		end
 
-		varType = string.gsub(varType, "%*", "")					-- remove pointer "*"
-		Search.datatype(varType)
+		filename = Search.datatype(varType)
+		filename = "/home/demon/下载/mccode/ForwardingPlane/include/be/arp.h"
+		members = Parse.datatype(Pair.get_type(param), filename)
+
+		if level == 0 then
+			output_definition = output_definition .. Generator.ctype_def(param)
+			output_expression = output_expression .. Generator.getsubtable(Pair.get_name(param), level, true)
+
+			level = level + 1
+			for _, member in pairs(members) do
+				output_expression = output_expression .. Generator.ctype_expr(member ,level, "false")
+			end
+			output_expression = output_expression .. string.rep(INDENT, 2 + level-1) .. ")\n"
+
+		else
+
+		end
 	end
 end
 
