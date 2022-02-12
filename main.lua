@@ -19,12 +19,12 @@ output_definition = "\t\tint ret = 0;\n"
 output_expression = ""
 
 params_str = ""
-function_head = string.gsub(TEMPLATES_function_head, "$y_api", funcName)
+function_head = string.gsub(TPL_function_head, "$y_api", funcName)
 function_footer = ""
-fuction_closing = TEMPLATES_function_closing
+fuction_closing = TPL_function_closing
 
 
-function get_struct(param, level, debug)
+function get_struct(param, level, prefix, debug)
 	local expression = ""
 	local is_ctype
 	local match
@@ -36,7 +36,10 @@ function get_struct(param, level, debug)
 	
 	is_ctype, match = Pair.is_ctype(param)
 	if is_ctype then
-		expression = expression .. Generator.ctype_expr(param, level, debug)
+		expression = expression .. Generator.ctype_expr(param, level, prefix, debug)
+	-- special treatment 
+	elseif Generator.is_special_field(param) then
+		expression = expression .. Generator.special_field(param, level, prefix, debug)
 	else
 		-- some works need to be done before search for the symbol
 		if match then
@@ -44,19 +47,25 @@ function get_struct(param, level, debug)
 		end
 
 		filename = Search.datatype(varType)
+		filename = "/home/demon/下载/mccode/" .. filename
 		-- filename = "/home/demon/下载/mccode/ForwardingPlane/include/be/arp.h"
 		members = Parse.datatype(Pair.get_type(param), filename)
 
 		if level == 0 then is_else = true end		
 		expression = expression .. Generator.getsubtable(Pair.get_name(param), level, is_else)
 
+		-- recursively generate code here
 		level = level + 1
+		if not prefix then 
+			prefix = Pair.get_name(param)
+		else
+			prefix = prefix .. "." .. Pair.get_name(param)
+		end
 		for _, member in pairs(members) do
-			expression = expression .. get_struct(member ,level, false)
+			expression = expression .. get_struct(member, level, prefix, debug)
 		end
 
-		expression = expression .. string.rep(INDENT, 2 + level-1) .. ")\n"		-- the ) 
-
+		expression = expression .. string.rep(INDENT, 2 + level-1) .. ")\n"		-- the ) for getsubtable
 	end
 
 	return expression
@@ -68,10 +77,10 @@ for _, param in pairs(params) do
 
 	if Pair.is_ctype(param) then
 		output_definition = output_definition .. Generator.ctype_def(param)
-		output_expression = output_expression .. Generator.ctype_expr(param, level, true)
+		output_expression = output_expression .. Generator.ctype_expr(param, level, nil, true)
 	else
 		output_definition = output_definition .. Generator.struct_def(param)
-		output_expression = output_expression .. get_struct(param, level, true)
+		output_expression = output_expression .. get_struct(param, level, nil, false)
 	end
 
 	if Pair.is_pointer(param) then
