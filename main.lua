@@ -10,9 +10,6 @@ end
 local funcName = arg[1]
 
 
-params = Search.y_api_func(funcName)
-
-
 output = ""
 function_head = ""
 output_definition = "\t\tint ret = 0;\n"
@@ -70,6 +67,9 @@ function get_struct(param, level, prefix, debug)
 
 	return expression
 end
+
+
+params = Search.y_api_func(funcName)
 
 -- 主循环里处理定义，loop里不处理
 for _, param in pairs(params) do

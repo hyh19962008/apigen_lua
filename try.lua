@@ -32,7 +32,7 @@ end
 function Pair.is_pointer(pair)
 	assert(pair.tag == Tag.pair, "parameter is no of Pair type.")
 
-	return pair.tag == Tag.ptr
+	return pair[1].tag == Tag.ptr
 end
 
 function Pair.get_type(pair)

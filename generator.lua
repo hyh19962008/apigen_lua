@@ -7,11 +7,19 @@ dofile("/home/demon/下载/mccode/common.lua")
 TPL_ctype = "getKey(L, LUAC_STR_VAR($var), $debug, apiName);\n"
 TPL_ctype_pre = "getKey(L, LUAC_STR_PREVAR($var, $prefix), $debug, apiName);\n"
 TPL_bitfield = "LUAC_BITFIELD_GET($var, $prefix, $debug);\n"
+TPL_ipv6 = {
+	'if(!getKey(L, "$var", ipv6Str, $debug, apiName))\n',
+		'\t$var_full = IPv6Address(ipv6Str);\n'
+}
 TPL_special = {
 	["struct mac_address_t"] = {
 		'if(!getKey(L, "$var", macStr, $debug, apiName))\n',
 		"\t$var_full = MacAddress(macStr);\n"
 	},
+	-- the struct datatype of ipv6 can be even more, because IPv6Address::operator T() is a class template
+	["struct ipv6_address_t"] = TPL_ipv6,
+	["struct srv6_sid_response"] = TPL_ipv6,
+	["struct srv6_nhi_tbl_response"] = TPL_ipv6,
 }
 
 TPL_function_head = "\tint luac_$y_api(lua_State *L) {\n"
@@ -72,23 +80,23 @@ end
 -- @param [table] param
 -- @return [bool]
 function Generator.is_special_field(param)
-	local special_field = {
-		["struct mac_address_t"] = true
-	}
-
-	if special_field[Pair.get_type(param)] then
+	if TPL_special[Pair.get_type(param)] then
 		return true
 	else
 		return false
 	end
 end
 
+-- handle special fields, note that we directly modified 
+-- the global variable `output_definition` here instead of return def,
+-- just to keep the code clean.
 -- @return [string] expr
 function Generator.special_field(param, level, prefix, debug)
 	local debug_str
 	local tpl
 	local tmpstr
 	local var
+	local _type
 	local indent
 	local def
 
@@ -98,19 +106,23 @@ function Generator.special_field(param, level, prefix, debug)
 		debug_str = "false" 
 	end
 
-	tpl = TPL_special[Pair.get_type(param)]
 	var = Pair.get_name(param)
+	_type = Pair.get_type(param)
+	tpl = TPL_special[_type]
 	indent = string.rep(INDENT, level+2)
 
-	if Pair.get_type(param) == "struct mac_address_t" then
+	if _type == "struct mac_address_t" then
 		def = string.rep(INDENT, 2) .. "std::string macStr;\n"
-		tmpstr = string.gsub(tpl[1], "$var", var)
-		tmpstr = string.gsub(tmpstr, "$debug", debug_str)
-		tpl = string.gsub(tpl[2], "$var_full", prefix .. "." .. var)
-
-		output_definition = output_definition .. def
-		return indent .. tmpstr .. indent .. tpl
+	elseif string.find(_type, "ipv6") or string.find(_type, "srv6") then
+		def = string.rep(INDENT, 2) .. "std::string ipv6Str;\n"
 	end
+
+	tmpstr = string.gsub(tpl[1], "$var", var)
+	tmpstr = string.gsub(tmpstr, "$debug", debug_str)
+	tpl = string.gsub(tpl[2], "$var_full", prefix .. "." .. var)
+
+	output_definition = output_definition .. def			-- output_definition is a global variable
+	return indent .. tmpstr .. indent .. tpl
 end
 
 -- generate expression to read Lua script for ctype variable and field
