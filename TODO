@@ -1,0 +1,6 @@
+[x] 忽略pad, rsv 等字段
+[] 关键字段加上debug=true
+[] union 类型后继全部debug=false
+[] bitfield 和 getkey语句
+[] 特殊处理字段 MacAddress, IPv6...
+[] function footer 特殊处理 (add/modify)
