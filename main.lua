@@ -21,7 +21,7 @@ function_footer = ""
 fuction_closing = TPL_function_closing
 
 
-function get_struct(param, level, prefix, debug)
+function get_struct(param, level, prefix, debug, in_union)
 	local expression = ""
 	local is_ctype
 	local match
@@ -30,10 +30,12 @@ function get_struct(param, level, prefix, debug)
 	local filename
 	local members
 	local is_else = false
+	local _in_union	= false			-- local var, differ from the para in_union
+	local first_in_union = false
 	
 	is_ctype, match = Pair.is_ctype(param)
 	if is_ctype then
-		expression = expression .. Generator.ctype_expr(param, level, prefix, debug)
+		expression = expression .. Generator.ctype_expr(param, level, prefix, debug, in_union)
 	-- special treatment 
 	elseif Generator.is_special_field(param) then
 		expression = expression .. Generator.special_field(param, level, prefix, debug)
@@ -43,13 +45,23 @@ function get_struct(param, level, prefix, debug)
 			varType = string.trim(string.gsub(Pair.get_type(param), match, ""))	-- remove struct/union
 		end
 
+		-- in_union flag determines whether to set the debug field to false
+		-- in Generator.ctype_expr(). Once the flag was set, it should be carried
+		-- to all its' data members and sub data members.
+		if match == "union" then
+			_in_union = true
+		end
+		if not in_union then 
+			in_union = _in_union
+			if in_union then first_in_union = true end
+		end
+
 		filename = Search.datatype(varType)
 		filename = "/home/demon/下载/mccode/" .. filename
-		-- filename = "/home/demon/下载/mccode/ForwardingPlane/include/be/arp.h"
 		members = Parse.datatype(Pair.get_type(param), filename)
 
 		if level == 0 then is_else = true end		
-		expression = expression .. Generator.getsubtable(Pair.get_name(param), level, is_else)
+		expression = expression .. Generator.getsubtable(Pair.get_name(param), level, is_else, first_in_union)
 
 		-- recursively generate code here
 		level = level + 1
@@ -59,7 +71,7 @@ function get_struct(param, level, prefix, debug)
 			prefix = prefix .. "." .. Pair.get_name(param)
 		end
 		for _, member in pairs(members) do
-			expression = expression .. get_struct(member, level, prefix, debug)
+			expression = expression .. get_struct(member, level, prefix, debug, in_union)
 		end
 
 		expression = expression .. string.rep(INDENT, 2 + level-1) .. ")\n"		-- the ) for getsubtable
@@ -80,7 +92,7 @@ for _, param in pairs(params) do
 		output_expression = output_expression .. Generator.ctype_expr(param, level, nil, true)
 	else
 		output_definition = output_definition .. Generator.struct_def(param)
-		output_expression = output_expression .. get_struct(param, level, nil, false)
+		output_expression = output_expression .. get_struct(param, level, nil, true) .. "\n"
 	end
 
 	if Pair.is_pointer(param) then

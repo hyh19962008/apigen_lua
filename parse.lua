@@ -65,11 +65,23 @@ function Pair.is_ctype(pair)
 		match = string.match(Pair.get_type(pair), "^union") 
 	end
 
+	
 	if pair[1].tag == Tag.type then
 		if match then 
 			ret = false 
 		else
 			ret = true
+		end
+	-- pointer type
+	elseif pair[1].tag == Tag.ptr then
+		if pair[1].t.tag == Tag.type then
+			if match then 
+				ret = false 
+			else
+				ret = true
+			end
+		else
+			ret = false
 		end
 	else
 		ret = false

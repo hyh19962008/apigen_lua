@@ -50,7 +50,7 @@ end
 -- @param [string] var
 -- @return [bool]
 local function is_valid_field(var)
-	local no_use = {"^pad%d*", "^padding", "^rsv(_?)%d*", "^resv%d", "^reserve%d*", "^reserved%d*"}
+	local no_use = {"pad%d*$", "padding$", "rsv(_?)%d*$", "resv%d$", "reserve%d*$", "reserved%d*$"}
 
 	for _, v in pairs(no_use) do
 		if string.find(string.lower(var), v) then
@@ -128,7 +128,7 @@ end
 -- generate expression to read Lua script for ctype variable and field
 -- @param [bool] debug, optional
 -- @return [string]expr
-function Generator.ctype_expr(param, level, prefix, debug)
+function Generator.ctype_expr(param, level, prefix, debug, in_union)
 	local tmpstr
 	local var
 	local debug_str
@@ -141,6 +141,7 @@ function Generator.ctype_expr(param, level, prefix, debug)
 	debug_str = "true"
 	if not debug then debug_str = "false" end		-- default value
 	if is_key_field(var) then debug_str = "true" end
+	if in_union then debug_str = "false" end		-- in_union is superior to is_key_field
 
 	if is_valid_field(var) then
 		if Pair.is_bitfield(param) then
@@ -160,13 +161,21 @@ function Generator.ctype_expr(param, level, prefix, debug)
 	end
 end
 
-function Generator.getsubtable(var, level, is_else)
+function Generator.getsubtable(var, level, is_else, first_in_union)
 	local indent = string.rep(INDENT, 2 + level)
-	if is_else then
-		return indent .. string.gsub(TPL_getsubtable_else, "$var", var)
-	else
-		return indent .. string.gsub(TPL_getsubtable, "$var", var)
+	local code = ""
+
+	if first_in_union then
+		code = indent .. "// union datatype, stop generating debug info\n"
 	end
+
+	if is_else then
+		code = code .. indent .. string.gsub(TPL_getsubtable_else, "$var", var)
+	else
+		code = code .. indent .. string.gsub(TPL_getsubtable, "$var", var)
+	end
+
+	return code
 end
 
 function Generator.function_footer(funcName, params_str)
