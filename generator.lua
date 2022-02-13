@@ -21,6 +21,29 @@ TPL_special = {
 	["struct srv6_sid_response"] = TPL_ipv6,
 	["struct srv6_nhi_tbl_response"] = TPL_ipv6,
 }
+-- the $expr, though in a weird position, are intented to fix the indent
+TPL_mask = [[// if mask provided a string "all", set all the mask field to 1
+		if(getKey(L, "mask", maskMode, false) != 0) {
+			luaL_getsubtable(L, -1, "mask");
+			if(lua_istable(L, -1)) {
+				lua_pop(L, 1);			// the generated $.expr should reload mask
+$expr
+			}
+			else{
+				printDebugInfo(apiName, "mask not found");
+				lua_pop(L, 1);
+			}
+		}
+		else {
+			if(maskMode == "all") {
+				std::array<uint8_t, sizeof($type)> tmpFFArray;
+				tmpFFArray.fill(0xff);
+				memcpy(&mask, tmpFFArray.data(), sizeof($type));
+			}
+			else 
+				printDebugInfo("Error getting " + apiName + " Mask.");
+		}
+]]
 
 TPL_function_head = "\tint luac_$y_api(lua_State *L) {\n"
 TPL_function_footer = [[
@@ -38,10 +61,12 @@ INDENT = "\t"
 
 Generator = {}
 
+-- generate defintion code for ctype
 function Generator.ctype_def(param)
 	return string.rep(INDENT, 2) .. Pair.get_type(param) .. " " .. Pair.get_name(param) .. ";\n"
 end
 
+-- generate defintion code for struct/union
 function Generator.struct_def(param)
 	return string.rep(INDENT, 2) .. Pair.get_type(param) .. " " .. Pair.get_name(param) .. " = {};\n"
 end
@@ -61,7 +86,7 @@ local function is_valid_field(var)
 	return true
 end
 
--- check if var is a key field (whose debug should be set to true)
+-- check if var is a key field (whose debug filed should be set to true)
 -- @param [string] var
 -- @return [bool]
 local function is_key_field(var)
@@ -82,21 +107,23 @@ end
 function Generator.is_special_field(param)
 	if TPL_special[Pair.get_type(param)] then
 		return true
+	elseif Pair.get_name(param) == "mask" and not param.not_special then
+		return true
 	else
 		return false
 	end
 end
 
 -- handle special fields, note that we directly modified 
--- the global variable `output_definition` here instead of return def,
--- just to keep the code clean.
+-- the global variable `output_definition` here instead of return def
+-- for further processing, just to keep the code logic clean.
 -- @return [string] expr
 function Generator.special_field(param, level, prefix, debug)
 	local debug_str
 	local tpl
 	local tmpstr
 	local var
-	local _type
+	local varType
 	local indent
 	local def
 
@@ -107,27 +134,38 @@ function Generator.special_field(param, level, prefix, debug)
 	end
 
 	var = Pair.get_name(param)
-	_type = Pair.get_type(param)
-	tpl = TPL_special[_type]
+	varType = Pair.get_type(param)
+	tpl = TPL_special[varType]
 	indent = string.rep(INDENT, level+2)
 
-	if _type == "struct mac_address_t" then
+	if varType == "struct mac_address_t" then
 		def = string.rep(INDENT, 2) .. "std::string macStr;\n"
-	elseif string.find(_type, "ipv6") or string.find(_type, "srv6") then
+	elseif string.find(varType, "ipv6") or string.find(varType, "srv6") then
 		def = string.rep(INDENT, 2) .. "std::string ipv6Str;\n"
+	elseif var == "mask" then
+		def = string.rep(INDENT, 2) .. "std::string maskMode;\n"
+		level = 2					-- fix indent
+		param.not_special = true	-- skip is_special_field checking for get_struct()
+		tmpstr = string.gsub(TPL_mask, "$type", varType)
+		tmpstr = string.gsub(tmpstr, "$expr", get_struct(param, level, prefix, debug))
+		tpl = ""					-- fix string concat at the end
+		goto finish
 	end
 
+	-- code for mac_address_t, ipv6
 	tmpstr = string.gsub(tpl[1], "$var", var)
 	tmpstr = string.gsub(tmpstr, "$debug", debug_str)
 	tpl = string.gsub(tpl[2], "$var_full", prefix .. "." .. var)
 
+::finish::
 	output_definition = output_definition .. def			-- output_definition is a global variable
 	return indent .. tmpstr .. indent .. tpl
 end
 
 -- generate expression to read Lua script for ctype variable and field
 -- @param [bool] debug, optional
--- @return [string]expr
+-- @param [bool] in_union, optional
+-- @return [string] expr
 function Generator.ctype_expr(param, level, prefix, debug, in_union)
 	local tmpstr
 	local var
@@ -161,6 +199,12 @@ function Generator.ctype_expr(param, level, prefix, debug, in_union)
 	end
 end
 
+-- generate getsubtable code
+-- @param [string] var
+-- @param [int] level
+-- @param [bool] is_else, optional
+-- @param [bool] first_in_union, optional 
+-- @retrun [string] expr
 function Generator.getsubtable(var, level, is_else, first_in_union)
 	local indent = string.rep(INDENT, 2 + level)
 	local code = ""
@@ -178,6 +222,8 @@ function Generator.getsubtable(var, level, is_else, first_in_union)
 	return code
 end
 
+-- generate function_footer code
+-- @return [string] expr
 function Generator.function_footer(funcName, params_str)
 	local function_footer
 

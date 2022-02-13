@@ -31,6 +31,9 @@ local function check_result(result, message)
 
 	if #result == 0 then
 		print("symbol " .. message .. " not found.")
+		if string.find(message, "_set") then
+			print("Try " ..  string.gsub(message, "_set", "_add") .. " maybe?")
+		end
 		os.exit(-2)
 	elseif #result > 1 then
 		for i, v in ipairs(result) do

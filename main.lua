@@ -83,7 +83,7 @@ end
 
 params = Search.y_api_func(funcName)
 
--- 主循环里处理定义，loop里不处理
+-- 主循环里处理定义，get_struct里不处理
 for _, param in pairs(params) do
 	local level = 0
 

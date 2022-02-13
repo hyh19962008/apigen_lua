@@ -5,3 +5,6 @@
 [] 特殊处理字段 MacAddress, IPv6... (在最外层时还不能处理)
 [] function footer 特殊处理 (add/modify)
 [x] y_api_full 指针
+[x] 搜索失败时检查set，提示add/modify
+[] 添加正确的注释
+[] function_head 的命名规范
