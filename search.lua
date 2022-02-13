@@ -1,6 +1,6 @@
 -- dofile("common.lua")
 dofile("/home/demon/下载/mccode/common.lua")
-dofile("/home/demon/下载/mccode/try.lua")
+dofile("/home/demon/下载/mccode/parse.lua")
 
 
 Search = {}
