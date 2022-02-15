@@ -13,7 +13,7 @@ local function global(symbol, format)
 	local result
 
 	format = format or "ctags-x"
-	f = io.popen("cd ~/下载/mccode;global --result " .. format .. " -d " .. symbol , "r")
+	f = io.popen("global --result " .. format .. " -d " .. symbol , "r")
 	result = {}
 	repeat tmp = f:read()
 		table.insert(result, tmp)

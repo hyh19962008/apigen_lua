@@ -98,6 +98,7 @@ function Pair.is_ctype(pair)
 end
 
 -- TypeDef
+--[[
 cparse_struct = {
 	name = "",
 	sclass = "",		-- storage class, 
@@ -137,6 +138,7 @@ cparse_struct = {
 	},
 	where = ":$line"
 }
+]]
 
 -- parse the given file and return member information of symbol
 -- of the provided symbol
