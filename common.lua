@@ -73,6 +73,7 @@ local Ctype_hash = {}
 for _, v in pairs(Ctype) do
 	Ctype_hash[v] = true
 end
+Ctype = nil
 
 -- check if the given type is a C internal datatype
 -- @return [bool]

@@ -1,6 +1,5 @@
--- dofile("common.lua")
-dofile("/home/demon/下载/mccode/common.lua")
-dofile("/home/demon/下载/mccode/parse.lua")
+dofile("common.lua")
+dofile("parse.lua")
 
 
 Search = {}
@@ -89,9 +88,7 @@ function Search.y_api_func(funcname)
 	index = check_result(result, funcname)
 	result = result[index]
 	result = split_result(result)
-
 	
-	-- result.def = string.gsub(result.def, "%*", "")
 	-- parse the function definition
 	di = cparser.declarationIterator(Parse.options, string.gmatch(result.def, '[^\n]+'))
 	func = di()

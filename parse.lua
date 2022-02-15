@@ -6,9 +6,10 @@ Tag = {}
 
 Parse.options = {
 	"-std=c99",
-	"-Zpass",
+	"-Zpass",			-- ignore #include not found
 }
 
+-- reference https://github.com/facebookresearch/CParser
 Tag = {
 	type = "Type",
 	qual = "Qualified",
@@ -24,19 +25,19 @@ Tag = {
 }
 
 function Pair.is_bitfield(pair)
-	assert(pair.tag == Tag.pair, "parameter is no of Pair type.")
+	assert(pair.tag == Tag.pair, "parameter is not of Pair type.")
 
 	return pair.bitfield ~= nil
 end
 
 function Pair.is_pointer(pair)
-	assert(pair.tag == Tag.pair, "parameter is no of Pair type.")
+	assert(pair.tag == Tag.pair, "parameter is not of Pair type.")
 
 	return pair[1].tag == Tag.ptr
 end
 
 function Pair.get_type(pair)
-	assert(pair.tag == Tag.pair, "parameter is no of Pair type.")
+	assert(pair.tag == Tag.pair, "parameter is not of Pair type.")
 
 	if pair[1].tag == Tag.type then
 		return pair[1].n
@@ -46,15 +47,29 @@ function Pair.get_type(pair)
 end
 
 function Pair.get_name(pair)
-	assert(pair.tag == Tag.pair, "parameter is no of Pair type.")
+	assert(pair.tag == Tag.pair, "parameter is not of Pair type.")
 
 	return pair[2]
 end
 
 
+local function not_struct(pair, match)
+	local ret 
+	
+	if match then 
+		ret = false 
+	else
+		assert(Pair.get_type(pair) ~= "void", "Type 'void' found, stop parsing.")
+		ret = true
+	end
+
+	return ret
+end
+
+-- check if the given pair is ctype or ctype pointer
 -- @return [bool] ret, [string] match
 function Pair.is_ctype(pair)
-	assert(pair.tag == Tag.pair, "parameter is no of Pair type.")
+	assert(pair.tag == Tag.pair, "parameter is not of Pair type.")
 
 	local match
 	local ret
@@ -67,19 +82,11 @@ function Pair.is_ctype(pair)
 
 	
 	if pair[1].tag == Tag.type then
-		if match then 
-			ret = false 
-		else
-			ret = true
-		end
+		ret = not_struct(pair, match)
 	-- pointer type
 	elseif pair[1].tag == Tag.ptr then
 		if pair[1].t.tag == Tag.type then
-			if match then 
-				ret = false 
-			else
-				ret = true
-			end
+			ret = not_struct(pair, match)
 		else
 			ret = false
 		end
@@ -131,7 +138,7 @@ cparse_struct = {
 	where = ":$line"
 }
 
--- parse the given file and return member information 
+-- parse the given file and return member information of symbol
 -- of the provided symbol
 -- @param [string] symbol
 -- @param [string] filename
@@ -141,7 +148,6 @@ function Parse.datatype(symbol, filename)
 	local found = false
 	local members = {}
 
-	-- di = cparser.declarationIterator(Parse.options, filename)
 	di = cparser.declarationIterator(Parse.options, io.lines(filename))
 	for decl in di do 
 		if decl.name == symbol then
@@ -164,6 +170,3 @@ function Parse.datatype(symbol, filename)
 	end
 	return members
 end
-
-
--- parse.datatype("struct arp_response", '/home/demon/下载/mccode/main.c')

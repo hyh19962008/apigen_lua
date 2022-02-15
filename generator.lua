@@ -2,7 +2,6 @@
 dofile("/home/demon/下载/mccode/common.lua")
 
 
-
 -- string templates-------------------------------
 TPL_ctype = "getKey(L, LUAC_STR_VAR($var), $debug, apiName);\n"
 TPL_ctype_pre = "getKey(L, LUAC_STR_PREVAR($var, $prefix), $debug, apiName);\n"
@@ -45,11 +44,41 @@ $expr
 		}
 ]]
 
-TPL_function_head = "\tint luac_$y_api(lua_State *L) {\n"
+TPL_comment = [[
+	/**
+	 * $prefix_$y_api
+	 * $more
+	 */ 
+]]
+TPL_function_head = "\tint $prefix_$y_api(lua_State *L) {\n"
 TPL_function_footer = [[
 		if(ret != 0)
 			return ret;
 		return $y_api_full($params);
+]]
+TPL_function_footer_em = [[
+		if(ret != 0)
+			return ret;
+		else {
+			ret = $funcp_match(npu_id, &request, &dummy, &entry_index);
+			if(ret != 0)
+				ret = $funcp_add(npu_id, &request, &response, &index);
+			else
+				ret = $funcp_modify(npu_id, &request, &response, &index);
+			return ret;
+		}
+]]
+TPL_function_footer_lpm = [[
+		if(ret != 0)
+			return ret;
+		else {
+			ret = $funcp_lookup(npu_id, table_index, &request, &tmpLpmResponse);
+			if(tmpLpmResponse.route_type == 3 && tmpLpmResponse.l3_path_id == L3PathID_MAX)
+				ret = $funcp_add(npu_id, table_index, &request, prefix_length, &response);
+			else
+				ret = $funcp_modify(npu_id, table_index, &request, prefix_length, &response);
+			return ret;
+		}
 ]]
 TPL_function_closing = "\t}\n"
 
@@ -58,6 +87,7 @@ TPL_getsubtable_else = "LUAC_GETSUBTABLE_ELSE($var,\n"
 ---------------------------------------------------
 
 INDENT = "\t"
+COMMENT_INDENT = "\n\t * "
 
 Generator = {}
 
@@ -125,7 +155,8 @@ function Generator.special_field(param, level, prefix, debug)
 	local var
 	local varType
 	local indent
-	local def
+	local def = ""
+	local ss
 
 	if debug then 
 		debug_str = "true" 
@@ -139,11 +170,17 @@ function Generator.special_field(param, level, prefix, debug)
 	indent = string.rep(INDENT, level+2)
 
 	if varType == "struct mac_address_t" then
-		def = string.rep(INDENT, 2) .. "std::string macStr;\n"
+		global_stats.def_mac_string = true
+		ss = string.gsub("@mod $var_full = string", "$var_full", prefix .. "." .. var)
+		table.insert(global_stats.comment_more, ss)
 	elseif string.find(varType, "ipv6") or string.find(varType, "srv6") then
-		def = string.rep(INDENT, 2) .. "std::string ipv6Str;\n"
+		global_stats.def_ipv6_string = true
+		ss = string.gsub("@mod $var_full = ipv6 string", "$var_full", prefix .. "." .. var)
+		table.insert(global_stats.comment_more, ss)
 	elseif var == "mask" then
 		def = string.rep(INDENT, 2) .. "std::string maskMode;\n"
+		ss = string.gsub('@mod mask = string "all" | $type', "$type", varType)
+		table.insert(global_stats.comment_more, ss)
 		level = 2					-- fix indent
 		param.not_special = true	-- skip is_special_field checking for get_struct()
 		tmpstr = string.gsub(TPL_mask, "$type", varType)
@@ -183,6 +220,7 @@ function Generator.ctype_expr(param, level, prefix, debug, in_union)
 
 	if is_valid_field(var) then
 		if Pair.is_bitfield(param) then
+			global_stats.has_bitfield = true
 			tmpstr = string.gsub(TPL_bitfield, "$var", var)
 			tmpstr = string.gsub(tmpstr, "$prefix", prefix)
 			return indent .. string.gsub(tmpstr, "$debug", debug_str)
@@ -224,11 +262,44 @@ end
 
 -- generate function_footer code
 -- @return [string] expr
-function Generator.function_footer(funcName, params_str)
+function Generator.function_footer(funcName, params_str, params)
 	local function_footer
+	local is_add_func = false
+	local funcp = ""
+	local str1
+	local str2
 
-	function_footer = string.gsub(TPL_function_footer, "$y_api_full", funcName)
-	function_footer = string.gsub(function_footer, "$params", params_str)
+	if string.find(funcName, "_add") then 
+		is_add_func = true 
+		funcp = string.gsub(funcName, "_add", "")
+	end
+
+	-- lpm must be checked before em, cause is_lpm_table and is_em_table can be true at the same time
+	if global_stats.is_lpm_table and is_add_func then
+		for _, param in pairs(params) do
+			if Pair.get_name(param) == "response" then
+				str1 = Generator.struct_def(param)
+				str2 = string.rep(INDENT, 2) .. Pair.get_type(param) .. " " .. "tmpLpmResponse" .. " = {};\n"
+				output_definition = string.gsub(output_definition, str1, 
+					str1 .. str2)
+			end
+		end
+		function_footer = string.gsub(TPL_function_footer_lpm, "$funcp", funcp)
+	elseif global_stats.is_em_tbale and is_add_func then
+		output_definition = output_definition .. string.rep(INDENT, 2) .. "uint32_t entry_index;\n"
+		for _, param in pairs(params) do
+			if Pair.get_name(param) == "response" then
+				str1 = Generator.struct_def(param)
+				str2 = string.rep(INDENT, 2) .. Pair.get_type(param) .. " " .. "dummy" .. " = {};\n"
+				output_definition = string.gsub(output_definition, str1, 
+					str1 .. str2)
+			end
+		end
+		function_footer = string.gsub(TPL_function_footer_em, "$funcp", funcp)
+	else
+		function_footer = string.gsub(TPL_function_footer, "$y_api_full", funcName)
+		function_footer = string.gsub(function_footer, "$params", params_str)
+	end
 
 	return function_footer
 end
