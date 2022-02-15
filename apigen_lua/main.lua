@@ -1,4 +1,5 @@
 package.path = package.path .. ";" .. "./apigen_lua/?.lua"
+package.path = package.path .. ";" .. "./apigen_lua/cparser/?.lua"
 
 require("search")
 require("generator")

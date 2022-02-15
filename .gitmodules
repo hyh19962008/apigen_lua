@@ -1,0 +1,3 @@
+[submodule "apigen_lua/cparser"]
+	path = apigen_lua/cparser
+	url = https://github.com/facebookresearch/CParser.git
