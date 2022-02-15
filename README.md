@@ -6,7 +6,7 @@
 > - Gnu global
 
 # Usage
-放到simulator目录下
+放到simulator目录下  
 `$ ./apigen_lua.sh y_api_function > output.cpp`
 
 # Functionality
@@ -23,5 +23,5 @@
 [x] void 类型报错处理  
 
 # Other
-global工具会生成以下文件，请不要删除:
+global工具会生成以下文件，请不要删除:  
 `GPATH  GRTAGS  GTAGS  gtags_list`

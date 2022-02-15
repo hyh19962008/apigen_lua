@@ -6,7 +6,7 @@
 [x] function footer 特殊处理 (EM/LPM表)
 [x] y_api_full 的指针
 [x] 搜索失败时检查set, 提示add/modify
-[x] 添加正确的注释, mod好了, 
+[x] 添加正确的注释
 [x] function_head 的命名规范
 [x] void 类型报错处理
 [] 设置ret值
