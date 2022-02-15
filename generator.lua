@@ -1,5 +1,4 @@
--- dofile("common.lua")
-dofile("/home/demon/下载/mccode/common.lua")
+require("common")
 
 
 -- string templates-------------------------------

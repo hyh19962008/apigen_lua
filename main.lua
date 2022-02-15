@@ -1,6 +1,8 @@
-dofile("search.lua")
-dofile("generator.lua")
-dofile("parse.lua")
+package.path = package.path .. ";" .. "./apigen_lua/?.lua"
+
+require("search")
+require("generator")
+require("parse")
 
 -- check command line parameter
 local argc = #arg

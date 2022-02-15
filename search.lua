@@ -1,5 +1,5 @@
-dofile("common.lua")
-dofile("parse.lua")
+require("common")
+require("parse")
 
 
 Search = {}
