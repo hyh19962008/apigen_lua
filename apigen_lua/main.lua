@@ -71,7 +71,6 @@ function get_struct(param, level, prefix, debug, in_union)
 		end
 
 		filename = Search.datatype(varType)
-		filename = "/home/demon/下载/mccode/" .. filename
 		members = Parse.datatype(Pair.get_type(param), filename)
 
 		if level == 0 then is_else = true end		
